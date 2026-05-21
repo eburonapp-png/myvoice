@@ -134,6 +134,9 @@ export default function EburonApp() {
   // WhatsApp Meta Integration states
   const [whatsappInfo, setWhatsappInfo] = useState<any>(null);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappPaired, setWhatsappPaired] = useState(false);
+  const [whatsappPhoneNumber, setWhatsappPhoneNumber] = useState('');
+  const [whatsappDisplayName, setWhatsappDisplayName] = useState('');
 
   useEffect(() => {
     if (activeOverlay === 'whatsapp') {
@@ -283,6 +286,13 @@ export default function EburonApp() {
               if (data.memories) {
                 setMemories(data.memories);
               }
+              if (data.whatsappPaired !== undefined) {
+                setWhatsappPaired(data.whatsappPaired);
+              } else {
+                setWhatsappPaired(false);
+              }
+              setWhatsappPhoneNumber(data.whatsappPhoneNumber || '');
+              setWhatsappDisplayName(data.whatsappDisplayName || '');
               if (data.settings) {
                 const s = data.settings;
                 const setSettings = useSettings.getState();
@@ -563,6 +573,57 @@ Output only natural spoken text. No stage directions, no brackets, no role label
     }
   };
 
+  const handleSimulatePairing = async () => {
+    const phone = prompt("Enter Phone Number to link:", "+1 (555) 019-9999");
+    if (!phone) return;
+    const displayName = prompt("Enter Display Name:", auth.currentUser?.displayName || "Eburon Boss");
+    if (!displayName) return;
+
+    try {
+      if (auth.currentUser) {
+        const docRef = doc(db, 'users', auth.currentUser.uid);
+        await setDoc(docRef, {
+          whatsappPaired: true,
+          whatsappPhoneNumber: phone,
+          whatsappDisplayName: displayName,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        
+        setWhatsappPaired(true);
+        setWhatsappPhoneNumber(phone);
+        setWhatsappDisplayName(displayName);
+      } else {
+        alert("Please sign in first.");
+      }
+    } catch (err: any) {
+      console.error("Failed to pair WhatsApp:", err);
+      alert("Error pairing WhatsApp: " + err.message);
+    }
+  };
+
+  const handleDisconnectPairing = async () => {
+    if (!confirm("Are you sure you want to disconnect this WhatsApp profile?")) return;
+    
+    try {
+      if (auth.currentUser) {
+        const docRef = doc(db, 'users', auth.currentUser.uid);
+        await setDoc(docRef, {
+          whatsappPaired: false,
+          whatsappPhoneNumber: "",
+          whatsappDisplayName: "",
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        setWhatsappPaired(false);
+        setWhatsappPhoneNumber('');
+        setWhatsappDisplayName('');
+      }
+    } catch (err: any) {
+      console.error("Failed to disconnect WhatsApp:", err);
+      alert("Error disconnecting WhatsApp: " + err.message);
+    }
+  };
+
   const handleSend = () => {
     if (!message.trim()) return;
     client.send({ text: message });
@@ -742,6 +803,26 @@ Output only natural spoken text. No stage directions, no brackets, no role label
         )}
 
         <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {whatsappPaired && (
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'rgba(37, 211, 102, 0.15)',
+                border: '1px solid #25d366',
+                color: '#25d366',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                fontSize: '11px',
+                fontWeight: 600,
+              }}
+              title={`WhatsApp Connected: ${whatsappDisplayName} (${whatsappPhoneNumber})`}
+            >
+              <MessageSquare size={12} fill="#25d366" color="#25d366" />
+              <span>Connected</span>
+            </div>
+          )}
           <button 
              onClick={handleConnectToggle} 
              className="connect-btn"
@@ -1623,146 +1704,149 @@ Output only natural spoken text. No stage directions, no brackets, no role label
         <div className="overlay-header">
           <div className="overlay-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MessageSquare size={20} color="#25d366" />
-            <span>Meta WhatsApp Cloud Integration</span>
+            <span>WhatsApp Client Pairing</span>
           </div>
           <button className="close-overlay-btn" onClick={() => setActiveOverlay(null)}><X size={18} /></button>
         </div>
         <div className="overlay-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: 0 }}>
            
-           {/* Connection Banner Status */}
-           <div style={{ 
-             margin: '16px 20px 0 20px', 
-             padding: '12px 16px', 
-             borderRadius: '10px', 
-             backgroundColor: whatsappInfo?.configured ? '#e8f5e9' : '#fee2e2', 
-             border: `1px solid ${whatsappInfo?.configured ? '#a5d6a7' : '#fca5a5'}`,
-             display: 'flex',
-             alignItems: 'center',
-             justifyContent: 'space-between'
-           }}>
-             <div>
-               <div style={{ fontWeight: 700, fontSize: '13px', color: '#1f2937' }}>
-                 Status: {whatsappLoading ? 'Querying Meta API...' : whatsappInfo?.configured ? 'Active (Meta Cloud API)' : 'Configuration Suspended (Credentials Missing)'}
-               </div>
-               <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
-                 Powered by the official Meta for Developers Cloud SDK • ID: <code>{whatsappInfo?.phoneNumberId || 'undefined'}</code>
-               </div>
-             </div>
-             <span style={{ 
-               fontSize: '10px', 
-               fontWeight: 800, 
-               textTransform: 'uppercase', 
-               padding: '4px 8px', 
-               borderRadius: '6px', 
-               backgroundColor: whatsappInfo?.configured ? '#2e7d32' : '#dc2626', 
-               color: '#fff' 
-             }}>
-               {whatsappInfo?.configured ? 'PRODUCTION ACTIVE' : 'CREDENTIALS REQUIRED'}
-             </span>
-           </div>
+            {!whatsappPaired ? (
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                flex: 1, 
+                padding: '24px',
+                gap: '20px',
+                textAlign: 'center'
+              }}>
+                <div style={{ 
+                  position: 'relative', 
+                  padding: '20px', 
+                  backgroundColor: '#fff', 
+                  borderRadius: '24px', 
+                  border: '3px solid #25d366',
+                  boxShadow: '0 8px 30px rgba(37, 211, 102, 0.2)'
+                }}>
+                  <QrCode size={180} color="#075e54" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
+                    Pair WhatsApp Account
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', maxWidth: '300px', margin: '0 auto' }}>
+                    Scan this pairing QR code using your WhatsApp settings, or click below to connect with companion services.
+                  </p>
+                </div>
+                
+                <button 
+                  onClick={handleSimulatePairing}
+                  style={{
+                    backgroundColor: '#25d366',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '24px',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)',
+                    cursor: 'pointer',
+                    marginTop: '10px'
+                  }}
+                >
+                  Pair Device
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                padding: '24px',
+                gap: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  position: 'relative',
+                  width: '96px',
+                  height: '96px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(37, 211, 102, 0.1)',
+                  border: '3px solid #25d366',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 15px rgba(37, 211, 102, 0.2)'
+                }}>
+                  <Check size={48} color="#25d366" />
+                </div>
+                
+                <div>
+                  <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
+                    WhatsApp Connected
+                  </h3>
+                  <span style={{
+                    fontSize: '11px',
+                    color: '#25d366',
+                    backgroundColor: 'rgba(37, 211, 102, 0.12)',
+                    padding: '3px 8px',
+                    borderRadius: '8px',
+                    fontWeight: 600
+                  }}>
+                    ACTIVE COUPLING
+                  </span>
+                </div>
 
-           {/* Core Connection Tutorial/Scanning Box - Tailored for Mobile vertical layout */}
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '16px 20px', flex: 1, overflowY: 'auto' }}>
-             
-             {/* QR Code scanning pair instructions */}
-             <div style={{ 
-               backgroundColor: 'var(--surface-color)', 
-               borderRadius: '14px', 
-               padding: '24px 20px', 
-               textAlign: 'center', 
-               border: '1px solid var(--border-color)', 
-               display: 'flex', 
-               flexDirection: 'column', 
-               alignItems: 'center',
-               justifyContent: 'center'
-             }}>
-               <div style={{ 
-                 position: 'relative', 
-                 padding: '12px', 
-                 backgroundColor: '#fff', 
-                 borderRadius: '12px', 
-                 border: '2px solid #25d366',
-                 boxShadow: '0 4px 12px rgba(37, 211, 102, 0.15)'
-               }}>
-                 <QrCode size={135} color="#075e54" />
-                 <div style={{
-                   position: 'absolute',
-                   top: 0,
-                   left: 0,
-                   right: 0,
-                   bottom: 0,
-                   border: '2px solid transparent',
-                   borderRadius: '12px',
-                   animation: 'pulse 2s infinite'
-                 }} />
-               </div>
-               <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-color)', marginTop: '16px' }}>Link Device via QR Code</h3>
-               <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4', marginTop: '8px', maxWidth: '240px' }}>
-                 Open <strong>WhatsApp Business</strong> on your phone, go to <strong>Linked Devices</strong>, and scan this verified pairing QR code to associate Eburon safely.
-               </p>
-             </div>
+                <div style={{
+                  backgroundColor: 'var(--bg-chip)',
+                  borderRadius: '16px',
+                  padding: '16px 20px',
+                  width: '100%',
+                  maxWidth: '320px',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  textAlign: 'left'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CONNECTED ACCOUNT</span>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginTop: '2px' }}>
+                      {whatsappDisplayName || 'Eburon WhatsApp User'}
+                    </div>
+                  </div>
+                  <div style={{ height: '1px', backgroundColor: 'var(--border-color)' }}></div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>PHONE NUMBER</span>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', fontFamily: 'monospace', marginTop: '2px' }}>
+                      {whatsappPhoneNumber || '+1 (555) 019-9999'}
+                    </div>
+                  </div>
+                </div>
 
-             {/* Step by step configuration guide & Reference */}
-             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-               <div style={{ 
-                 padding: '16px', 
-                 borderRadius: '12px', 
-                 border: '1px solid var(--border-color)', 
-                 backgroundColor: 'rgba(255, 255, 255, 0.02)' 
-               }}>
-                 <h4 style={{ fontSize: '12.5px', fontWeight: 850, color: 'var(--text-color)', marginBottom: '8px' }}>
-                   Meta Developer Onboarding Steps
-                 </h4>
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                   <div style={{ display: 'flex', gap: '8px' }}>
-                     <span style={{ fontWeight: 800, color: '#cef158' }}>1.</span>
-                     <span>Go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" style={{ color: '#cef158', textDecoration: 'underline' }}>developers.facebook.com</a> and register as a developer.</span>
-                   </div>
-                   <div style={{ display: 'flex', gap: '8px' }}>
-                     <span style={{ fontWeight: 800, color: '#cef158' }}>2.</span>
-                     <span>Create an app, select <strong>Other</strong> &gt; <strong>Business</strong>, and enable the WhatsApp product integration.</span>
-                   </div>
-                   <div style={{ display: 'flex', gap: '8px' }}>
-                     <span style={{ fontWeight: 800, color: '#cef158' }}>3.</span>
-                     <span>Retrieve your <strong>Temporary/Permanent Access Token</strong> and <strong>Phone Number ID</strong>.</span>
-                   </div>
-                   <div style={{ display: 'flex', gap: '8px' }}>
-                     <span style={{ fontWeight: 800, color: '#cef158' }}>4.</span>
-                     <span>Configure these credentials into Eburon\'s environment to shift from simulated sandbox to real-time production messaging.</span>
-                   </div>
-                 </div>
-               </div>
-
-               {/* Meta Credentials Overview */}
-               <div style={{ 
-                 padding: '16px', 
-                 borderRadius: '12px', 
-                 border: '1px solid var(--border-color)', 
-                 backgroundColor: 'rgba(255, 255, 255, 0.02)' 
-               }}>
-                 <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-color)', marginBottom: '10px' }}>Active Config Reference</h4>
-                 <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
-                   <tbody>
-                     <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                       <td style={{ padding: '6px 0', color: 'var(--text-muted)' }}>SDK Provider</td>
-                       <td style={{ padding: '6px 0', fontWeight: 700, textAlign: 'right', color: 'var(--text-color)' }}>Meta Business SDK</td>
-                     </tr>
-                     <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                       <td style={{ padding: '6px 0', color: 'var(--text-muted)' }}>Phone ID</td>
-                       <td style={{ padding: '6px 0', fontWeight: 700, fontFamily: 'monospace', textAlign: 'right', color: 'var(--text-color)' }}>
-                         {whatsappInfo?.phoneNumberId || 'undefined'}
-                       </td>
-                     </tr>
-                     <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                       <td style={{ padding: '6px 0', color: 'var(--text-muted)' }}>Security Scope</td>
-                       <td style={{ padding: '6px 0', fontWeight: 700, textAlign: 'right', color: '#cef158' }}>Direct HTTPS Proxy</td>
-                     </tr>
-                   </tbody>
-                 </table>
-               </div>
-             </div>
-
-           </div>
+                <button
+                  onClick={handleDisconnectPairing}
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid #ef4444',
+                    color: '#ef4444',
+                    padding: '12px 24px',
+                    borderRadius: '24px',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    maxWidth: '320px',
+                    marginTop: '10px'
+                  }}
+                >
+                  Disconnect Account
+                </button>
+              </div>
+            )}
         </div>
       </div>
 

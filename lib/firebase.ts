@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, linkWithPopup } from 'firebase/auth';
 import { initializeFirestore, doc, getDocFromServer, getDoc, setDoc, getDocFromCache } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import firebaseConfigFromFile from '../firebase-applet-config.json';
 
 const getEnv = (key: string): string | undefined => {
@@ -36,6 +38,8 @@ const firestoreId = firebaseConfig.firestoreDatabaseId || '';
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 }, firestoreId === '' ? undefined : firestoreId); /* CRITICAL: The app will break without this line */
+export const rtdb = getDatabase(app);
+export const storage = getStorage(app);
 
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({
