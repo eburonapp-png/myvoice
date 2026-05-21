@@ -2122,7 +2122,55 @@ Output only natural spoken text. No stage directions, no brackets, no role label
           <p className="subtitle">{isSignupMode ? 'Create your new account' : 'Welcome back to Eburon'}</p>
 
           <form className="auth-form" onSubmit={handleEmailAuth}>
-            {authError && <div style={{color:'red', marginBottom:'10px', fontSize:'14px'}}>{authError}</div>}
+            {authError && (
+              authError.toLowerCase().includes('unauthorized-domain') ? (
+                <div style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                  fontSize: '12px',
+                  textAlign: 'left',
+                  lineHeight: '1.45'
+                }}>
+                  <div style={{ fontWeight: 700, color: '#ef4444', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Lock size={14} />
+                    <span>Firebase Authorized Domain Error</span>
+                  </div>
+                  <p style={{ color: 'var(--text-main)', marginBottom: '8px' }}>
+                    Firebase Auth has blocked this sign-in request because the current development domain is not whitelisted in your Firebase project.
+                  </p>
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '10.5px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Domain to whitelist:</div>
+                    <code style={{ 
+                      display: 'block', 
+                      backgroundColor: 'rgba(255,255,255,0.05)', 
+                      padding: '6px 8px', 
+                      borderRadius: '6px', 
+                      fontFamily: 'monospace', 
+                      fontSize: '11px', 
+                      overflowX: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      color: 'var(--accent-primary)'
+                    }}>
+                      {typeof window !== 'undefined' ? window.location.hostname : ''}
+                    </code>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: 'var(--text-muted)' }}>
+                    <div><strong>1.</strong> Go to your <a href={`https://console.firebase.google.com/project/${firebaseConfig?.projectId}/authentication/providers`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>Firebase Console Auth Settings</a>.</div>
+                    <div><strong>2.</strong> Navigate to the <strong>Settings</strong> tab &gt; <strong>Authorized domains</strong>.</div>
+                    <div><strong>3.</strong> Click <strong>Add Domain</strong> and paste the domain code block above.</div>
+                  </div>
+                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '11px', color: 'var(--accent-active)' }}>
+                    💡 <strong>Pro Tip:</strong> While you configure Google Auth, you can instantly sign up and sign in using the standard <strong>Email & Password</strong> form below! It does not require any domain whitelisting.
+                  </div>
+                </div>
+              ) : (
+                <div style={{color:'red', marginBottom:'10px', fontSize:'14px'}}>{authError}</div>
+              )
+            )}
             {isSignupMode && (
                <div className="auth-input-wrapper">
                  <User size={20} className="auth-icon-left" />
