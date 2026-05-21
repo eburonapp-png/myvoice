@@ -12,6 +12,18 @@
         "updatedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "whatsappPaired": {
+          "type": "boolean",
+          "description": "True if WhatsApp companion account has linked successfully"
+        },
+        "whatsappPhoneNumber": {
+          "type": "string",
+          "description": "Active WhatsApp user phone number"
+        },
+        "whatsappDisplayName": {
+          "type": "string",
+          "description": "Associated WhatsApp account display name"
         }
       }
     },

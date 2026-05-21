@@ -23,7 +23,10 @@ service cloud.firestore {
         && (data.accessToken == null || data.accessToken is string)
         && (data.updatedAt == null || data.updatedAt is string)
         && (data.memories == null || data.memories is list)
-        && (data.settings == null || data.settings is map);
+        && (data.settings == null || data.settings is map)
+        && (data.whatsappPaired == null || data.whatsappPaired is bool)
+        && (data.whatsappPhoneNumber == null || data.whatsappPhoneNumber is string)
+        && (data.whatsappDisplayName == null || data.whatsappDisplayName is string);
     }
 
     function isValidHistory(data) {
